@@ -1,0 +1,57 @@
+HCS Programming Language "Informal" Specification:
+
+Features
+# strong typed (int, float, char, list, dictionary, set, string and regex). Can include "auto" to the interpreter make an "inference"
+# a script language
+# an object oriented language
+# garbage collector
+# generic_programming
+# metaprogramming
+# interface support
+# static blocks support
+# recursive functions support
+# error handling
+# IO (in, out, and file ==> using stdout and stdin) like:
+   out "teste"
+   out "teste" >> file1
+   string a << in
+# module (can import other modules)
+  import <module_name>
+
+
+
+Example:
+
+import foo
+
+module test
+
+class Teste {
+	
+	private int a, b
+	public Teste t;
+
+	init(int a) {
+		self.a = a
+	}
+
+	destroy() {
+		t.free
+	}
+
+	public bool is_ready? {
+		return False
+	}
+
+	public int sum_this(a, b) {
+		return a + b
+	}
+
+}
+
+void main() {
+	Teste teste = new Teste()
+	if teste.is_ready?	{
+		out "teste"
+	}
+}

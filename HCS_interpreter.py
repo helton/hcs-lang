@@ -16,7 +16,7 @@ def interpret_loop():
         try:
             print(hcs.eval(command))
         except Exception as e:
-            print("Error: \n" + repr(e))        
+            print("Error: " + str(e))
 
 if __name__ == '__main__':
     interpret_loop()
