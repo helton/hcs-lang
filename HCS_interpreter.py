@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import traceback
 from HCS import HCS
 
 def interpret_loop():
@@ -16,7 +17,8 @@ def interpret_loop():
         try:
             print(hcs.eval(command))
         except Exception as e:
-            print("Error: " + str(e))
+            #print("Error: " + str(e))
+            traceback.print_exc()
 
 if __name__ == '__main__':
     interpret_loop()

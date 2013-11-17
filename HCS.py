@@ -1,16 +1,59 @@
 import parsimonious
 import operator
+from collections import namedtuple
 
-class HCS(object):
+Function = namedtuple('Function', 'scope formal_params statements lambda_function')
+FunctionMetadata = namedtuple('FunctionMetadata', 'scope formal_params statements')
 
-    def __init__(self, env = None):
-        self.environment = {} if env is None else env
-        self.environment['sum']   = lambda *args: sum(args)
-        self.environment['max']   = lambda *args: max(args)
-        self.environment['min']   = lambda *args: min(args)
-        self.environment['print'] = lambda x: print(x)
-        self.environment['sqr']   = lambda x: x ** x
-        self.environment['sqrt']  = lambda x: sqrt(x)
+class Scope(object):
+
+    def __init__(self, functions = None, variables = None):
+        self.functions = {} if functions is None else functions
+        self.variables = {} if variables is None else variables 
+
+    def add_builtin_functions(self):
+        pass
+        """
+        add_function('sum',   [], lambda *args: sum(args))
+        add_function('max',   [], lambda *args: max(args))
+        add_function('min',   [], lambda *args: min(args))
+        add_function('print', [], lambda x: print(x))
+        add_function('sqr',   [], lambda x: x ** x)
+        add_function('sqrt',  [], lambda x: sqrt(x))
+        """
+
+    def add_function(self, name, formal_params, stmts, lambda_function):
+        self.functions[name] = Function(None, formal_params, stmts, lambda_function)
+
+    def call(self, name, args):
+        if not name in self.functions:
+            raise LookupError('Function "%s" is not defined in the scope.' % (name))
+        else:
+            function = self.functions[name]
+            metadata = FunctionMetadata(Scope(self.variables, self.functions), function.formal_params, function.statements)
+            return function.lambda_function(metadata, *args)
+
+    def add_variable(self, name, value):
+        self.variables[name] = value
+
+    def add_variable_list(self, variable_list):
+        for name, value in variable_list.items():
+            self.add_variable(name, value)
+
+    def get_variable_value(self, name):
+        if not name in self.variables:
+            raise LookupError('Variable "%s" is not defined in the scope.' % (name))
+        else:
+            return self.variables[name]
+
+class HCS(object):   
+
+    def __init__(self, scope = None):
+        if scope is None:
+            self.scope = Scope()
+            self.scope.add_builtin_functions()
+        else:
+            self.scope = scope
 
     def parse(self, source):
         grammar = '\n'.join(v.__doc__ for k, v in vars(self.__class__).items()
@@ -40,13 +83,11 @@ class HCS(object):
         return exprs
 
     def assignment(self, node, children):
-        'assignment = identifier_name _ "=" _ expression'
-        id_name, _, _, _, expr = children
-        self.environment[id_name] = expr
-        return expr
+        'assignment = lambda_function_assignment / variable_assignment'
+        return children[0]
 
     def expression(self, node, children):
-        'expression = lambda_function / function_call / assignment / simple_expression'
+        'expression = function_call / assignment / simple_expression'
         return children[0]
 
     def factor(self, node, children):
@@ -56,10 +97,7 @@ class HCS(object):
     def function_call(self, node, children):
         'function_call = identifier_name _ "(" _ arguments _ ")"'
         name, _, _, _, args, _, _ = children
-        if not name in self.environment:
-            raise LookupError('Function "%s" is not defined in the scope.' % (name))
-        else:
-            return self.environment[name](*args)
+        return self.scope.call(name, args)
 
     def goal(self, node, children):
         'goal = statements*'
@@ -72,21 +110,25 @@ class HCS(object):
     def identifier_value(self, node, children):
         'identifier_value = ~"[a-z_][a-z_0-9]*"i _'
         name = node.text.strip()
-        if not name in self.environment:
-            raise LookupError('Variable "%s" is not defined in the scope.' % (name))
-        else:
-            return self.environment[name]
+        return self.scope.get_variable_value(name)
 
     def lambda_function(self, node):
-        'lambda_function = "function" _ "(" _ parameters _ ")" _ "{" _ statements _ "}"'
+        'lambda_function = "def" _ "(" _ parameters _ ")" _ "{" _ statements _ "}"'
         _, _, _, _, params, _, _, _, _, _, stmts, _, _ = node
-        params = map(lambda x: x.strip(), params.text.split(','))
+        params = list(map(lambda x: x.strip(), ''.join([param.text.strip() for param in params]).split(',')))
 
-        def lambda_func(*args):            
-            env = dict(self.environment.items() | zip(params, args))
-            return HCS(env).eval(stmts)
+        def lambda_func(function_metadata, *args):   
+            function_metadata.scope.add_variable_list(dict(zip(function_metadata.formal_params, args)))
+            return HCS(function_metadata.scope).eval(function_metadata.statements)
 
-        return lambda_func
+        return (params, stmts, lambda_func)
+
+    def lambda_function_assignment(self, node, children):
+        'lambda_function_assignment = identifier_name _ "=" _ lambda_function'
+        func_name, _, _, _, lambda_func_result = children
+        params, stmts, lambda_func = lambda_func_result
+        self.scope.add_function(func_name, params, stmts, lambda_func)
+        return lambda_func      
 
     def mul_op(self, node, children):
         'mul_op = "*" / "//" / "/" / "%"'
@@ -147,6 +189,12 @@ class HCS(object):
         for _, m_op, _, factor in factor_list:
             result = m_op(result, factor)
         return result          
+
+    def variable_assignment(self, node, children):
+        'variable_assignment = identifier_name _ "=" _ expression'
+        var_name, _, _, _, expr = children
+        self.scope.add_variable(var_name, expr)
+        return expr
 
     def _(self, node, children):
         '_ = ~"\s*"'

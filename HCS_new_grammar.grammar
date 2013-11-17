@@ -1,27 +1,3 @@
-_ = ~"\s*"
-add_op = ~"[+-]"
-arguments = identifier_list
-assignment = identifier_name _ "=" _ expression
-expression = pre_op? _ term ( _ add_op _ term )*
-factor = number / identifier_value / parentesized_expression
-function_def = "def" ws identifier_name "(" _ arguments _ ")" _ "{" _ statements? _ "}"
-goal = statements*
-identifier_list = identifier_name (_ "," _ identifier_name)*
-identifier_name = ~"[a-z_][a-z_0-9]*"i _
-identifier_value = ~"[a-z_][a-z_0-9]*"i _
-mul_op = "*" / "//" / "/" / "%"
-number = ~"[+-]?\s*(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
-parentesized_expression = "(" _ expression _ ")"
-pre_op = ~"[+-]"
-statement = _ ( function_def / assignment / expression )
-statements = statement ( _ ";" _ statement )*
-term = factor ( _ mul_op _ factor )*
-ws = ~"\s+"
-
-
-
-
-
 program = top_statements
 
 primary_expression = simple_expression / function_expression
@@ -52,7 +28,7 @@ simple_expression = "true" / "false" / "null" / number / string / identifier / p
 
 parenthesized_expression = "(" expression ")"
 
-expression = assignment_expression / ( expression "," assignment_expression )
+expression = math_expression / assignment_expression / ( expression "," assignment_expression )
 
 left_side_expression = call_expression
 
@@ -61,6 +37,8 @@ call_expression = primary_expression |  ( call_expression arguments )
 arguments = "()" | ( "(" argument_list ")" )
 
 argument_list = assignment_expression |  ( argumentList ","" assignment_expression )
+
+math_expression = additive_expression
 
 additive_expression = multiplicative_expression
 /  ( additive_expression "+" multiplicativeExpression )
