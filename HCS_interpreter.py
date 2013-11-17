@@ -4,9 +4,21 @@ import traceback
 from HCS import HCS
 
 def interpret_loop():
+
+    def print_welcome():
+        size = 50
+        print("=" * size)
+        print("HCS Programming Language Interpreter")
+        print("=" * size)
+        print("Author: Helton Carlos de Souza <heltoncarlossouza@gmail.com>")
+        print("Type 'quit' or 'exit' to end.")
+        print("=" * size)
+
+    print_welcome()
     hcs = HCS()
+    command_count = 1
     while True:
-        print(">> ", end="")
+        print("[%03d]>> " % (command_count), end="")
         try:
             command = input()
         except EOFError as e:
@@ -16,9 +28,10 @@ def interpret_loop():
             return
         try:
             print(hcs.eval(command))
+            command_count += 1
         except Exception as e:
-            #print("Error: " + str(e))
-            traceback.print_exc()
+            print("%s: %s" % (e.__class__.__name__, str(e)))
+            #traceback.print_exc()
 
 if __name__ == '__main__':
     interpret_loop()

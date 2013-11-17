@@ -1,64 +1,16 @@
 import parsimonious
 import operator
-from collections import namedtuple
-
-Function = namedtuple('Function', 'scope formal_params statements lambda_function')
-FunctionMetadata = namedtuple('FunctionMetadata', 'scope formal_params statements')
-
-class Scope(object):
-
-    def __init__(self, functions = None, variables = None):
-        self.functions = {} if functions is None else functions
-        self.variables = {} if variables is None else variables 
-
-    def add_builtin_functions(self):
-        pass
-        """
-        add_function('sum',   [], lambda *args: sum(args))
-        add_function('max',   [], lambda *args: max(args))
-        add_function('min',   [], lambda *args: min(args))
-        add_function('print', [], lambda x: print(x))
-        add_function('sqr',   [], lambda x: x ** x)
-        add_function('sqrt',  [], lambda x: sqrt(x))
-        """
-
-    def add_function(self, name, formal_params, stmts, lambda_function):
-        self.functions[name] = Function(None, formal_params, stmts, lambda_function)
-
-    def call(self, name, args):
-        if not name in self.functions:
-            raise LookupError('Function "%s" is not defined in the scope.' % (name))
-        else:
-            function = self.functions[name]
-            metadata = FunctionMetadata(Scope(self.variables, self.functions), function.formal_params, function.statements)
-            return function.lambda_function(metadata, *args)
-
-    def add_variable(self, name, value):
-        self.variables[name] = value
-
-    def add_variable_list(self, variable_list):
-        for name, value in variable_list.items():
-            self.add_variable(name, value)
-
-    def get_variable_value(self, name):
-        if not name in self.variables:
-            raise LookupError('Variable "%s" is not defined in the scope.' % (name))
-        else:
-            return self.variables[name]
+from Scope import Scope
 
 class HCS(object):   
 
     def __init__(self, scope = None):
-        if scope is None:
-            self.scope = Scope()
-            self.scope.add_builtin_functions()
-        else:
-            self.scope = scope
+        self.scope = Scope() if scope is None else scope
 
     def parse(self, source):
         grammar = '\n'.join(v.__doc__ for k, v in vars(self.__class__).items()
                       if '__' not in k and hasattr(v, '__doc__') and v.__doc__)
-        return parsimonious.Grammar(grammar)['goal'].parse(source)
+        return parsimonious.Grammar(grammar)['program'].parse(source)
 
     def eval(self, source):
         node = self.parse(source.replace("\n", " ")) if isinstance(source, str) else source
@@ -74,6 +26,12 @@ class HCS(object):
         add_operator = {"+": operator.add, "-": operator.sub}
         return add_operator[node.text]
 
+    def anonymous_function_call(self, node, children):
+        'anonymous_function_call = lambda_function _ "(" _ arguments _ ")"'
+        lambda_func_result, _, _, _, args, _, _ = children
+        params, stmts, lambda_func = lambda_func_result
+        return self.scope.direct_function_call(params, stmts, lambda_func, args)
+
     def arguments(self, node, children):
         'arguments = expression ( _ "," _ expression _ )*'
         expr, expr_list = children
@@ -87,7 +45,7 @@ class HCS(object):
         return children[0]
 
     def expression(self, node, children):
-        'expression = function_call / assignment / simple_expression'
+        'expression = anonymous_function_call / function_call / assignment / simple_expression'
         return children[0]
 
     def factor(self, node, children):
@@ -98,10 +56,6 @@ class HCS(object):
         'function_call = identifier_name _ "(" _ arguments _ ")"'
         name, _, _, _, args, _, _ = children
         return self.scope.call(name, args)
-
-    def goal(self, node, children):
-        'goal = statements*'
-        return children[0]
 
     def identifier_name(self, node, children):
         'identifier_name = ~"[a-z_][a-z_0-9]*"i _'
@@ -159,6 +113,10 @@ class HCS(object):
         pre_operator = {"+": lambda x: x, "-": operator.neg}
         return pre_operator[node.text]
 
+    def program(self, node, children):
+        'program = statements*'
+        return children[0]
+
     def simple_expression(self, node, children):
         'simple_expression = pre_op? _ term ( _ add_op _ term )*'
         p_op, _, term, term_list = children
@@ -171,8 +129,8 @@ class HCS(object):
         return result    
 
     def statements(self, node, children):
-        'statements = expression ( _ ";" _ expression )* _'
-        expr, expr_list, _ = children
+        'statements = expression ( _ ";" _ expression )* _ ";"? '
+        expr, expr_list, _, _ = children
         result = expr
         for _, _, _, expr in expr_list:
             result = expr
