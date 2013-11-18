@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-Function = namedtuple('Function', 'scope formal_params statements lambda_function')
+Function = namedtuple('Function', 'scope formal_params statements anonymous_function')
 FunctionMetadata = namedtuple('FunctionMetadata', 'scope formal_params statements')
 
 class Scope(object):
@@ -23,9 +23,9 @@ class Scope(object):
             raise NameError('Identifier "%s" is a builtin function, it cannot be overriden.' % (name))
         return True        
 
-    def add_function(self, name, formal_params, stmts, lambda_function):
+    def add_function(self, name, formal_params, stmts, anonymous_function):
         if self.can_add_in_scope(name):
-            self.functions[name] = Function(None, formal_params, stmts, lambda_function)
+            self.functions[name] = Function(None, formal_params, stmts, anonymous_function)
 
     def call(self, name, args):
         if name in self.builtin_functions:
@@ -35,15 +35,15 @@ class Scope(object):
                 raise NameError("Function '%s' is not defined." % (name))
             else:
                 function = self.functions[name]
-                return self.direct_function_call(function.formal_params, function.statements, function.lambda_function, args)
+                return self.direct_function_call(function.formal_params, function.statements, function.anonymous_function, args)
 
-    def add_variable(self, name, value):
+    def add_or_update_variable(self, name, value):
         if self.can_add_in_scope(name):
             self.variables[name] = value
 
     def add_variable_list(self, variable_list):
         for name, value in variable_list.items():
-            self.add_variable(name, value)
+            self.add_or_update_variable(name, value)
 
     def get_variable_value(self, name):
         if not name in self.variables:
@@ -51,6 +51,6 @@ class Scope(object):
         else:
             return self.variables[name]
 
-    def direct_function_call(self, formal_params, stmts, lambda_function, args):
-        metadata = FunctionMetadata(Scope(self.variables, self.functions), formal_params, stmts)
-        return lambda_function(metadata, *args)        
+    def direct_function_call(self, formal_params, stmts, anonymous_function, args):
+        metadata = FunctionMetadata(Scope(self.variables, self.functions), formal_params, stmts)        
+        return anonymous_function(metadata, *args)        

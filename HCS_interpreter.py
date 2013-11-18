@@ -21,17 +21,17 @@ def interpret_loop():
         print("[%03d]>> " % (command_count), end="")
         try:
             command = input()
+            command_count += 1
         except EOFError as e:
             print()
             return            
         if command in ['quit', 'exit']:
             return
         try:
-            print(hcs.eval(command))
-            command_count += 1
+            print(hcs.evaluate(command))            
         except Exception as e:
-            print("%s: %s" % (e.__class__.__name__, str(e)))
-            #traceback.print_exc()
+            #print("%s: %s" % (e.__class__.__name__, str(e)))
+            traceback.print_exc()
 
 if __name__ == '__main__':
     interpret_loop()
