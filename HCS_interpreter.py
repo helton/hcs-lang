@@ -10,7 +10,7 @@ def interpret_loop():
         print("=" * size)
         print("HCS Programming Language Interpreter")
         print("=" * size)
-        print("Author: Helton Carlos de Souza <heltoncarlossouza@gmail.com>")
+        print("Author: Helton Carlos de Souza")
         print("Type 'quit' or 'exit' to end.")
         print("=" * size)
 
